@@ -50,16 +50,21 @@ func NewSSHConnection(sess *gossh.Session, opts ...SSHOption) (*SSHConnection, e
 			stdin = transform.NewWriter(stdin, writerEncode)
 		}
 	}
-	err = sess.Shell()
-	if err != nil {
-		return nil, err
-	}
-	return &SSHConnection{
+	conn := &SSHConnection{
 		session: sess,
 		stdin:   stdin,
 		stdout:  stdout,
 		options: options,
-	}, nil
+	}
+	if !options.isLoginToSu {
+		err = sess.Shell()
+	} else {
+		err = LoginToSu(conn)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return conn, nil
 }
 
 type SSHConnection struct {
