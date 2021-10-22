@@ -27,7 +27,6 @@ KUBECTLFLAGS="-X 'github.com/jumpserver/koko/pkg/config.CipherKey=$(CipherKey)'"
 
 KOKOBUILD=CGO_ENABLED=0 go build -trimpath -ldflags "$(KOKOLDFLAGS)"
 KUBECTLBUILD=CGO_ENABLED=0 go build -trimpath -ldflags $(KUBECTLFLAGS)
-
 PLATFORM_LIST = \
 	darwin-amd64 \
 	linux-amd64 \
@@ -100,7 +99,7 @@ koko-ui:
 .PHONY: docker
 docker:
 	@echo "build docker images"
-	docker build -t jumpserver/koko .
+	docker build --build-arg TARGETARCH=amd64 -t jumpserver/koko .
 
 .PHONY: clean
 clean:

@@ -35,6 +35,7 @@ func NewTelnetConnection(opts ...TelnetOption) (*TelnetConnection, error) {
 		proxyClient *SSHClient
 		client      *tclientlib.Client
 	)
+	tclientlib.SetMode(tclientlib.DebugMode)
 	dstAddr := net.JoinHostPort(cfg.Host, cfg.Port)
 	if cfg.proxySSHClientOptions != nil {
 		if proxyClient, err = getAvailableProxyClient(cfg.proxySSHClientOptions...); err != nil {
