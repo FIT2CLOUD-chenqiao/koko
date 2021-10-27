@@ -99,7 +99,7 @@ koko-ui:
 .PHONY: docker
 docker:
 	@echo "build docker images"
-	docker build --build-arg TARGETARCH=$(ARCH) -t jumpserver/koko .
+	docker build --build-arg TARGETARCH=$(ARCH) --build-arg VERSION=$(VERSION) -t jumpserver/koko .
 
 .PHONY: clean
 clean:
