@@ -6,7 +6,7 @@ BRANCH := $(shell git symbolic-ref HEAD 2>/dev/null | cut -d"/" -f 3)
 BUILD := $(shell git rev-parse --short HEAD)
 KOKOSRCFILE := $(BASEPATH)/cmd/koko/
 KUBECTLFILE := $(BASEPATH)/cmd/kubectl/
-
+ARCH ?= $(shell go env GOARCH)
 VERSION ?= $(BRANCH)-$(BUILD)
 BuildTime:= $(shell date -u '+%Y-%m-%d %I:%M:%S%p')
 COMMIT:= $(shell git rev-parse HEAD)
@@ -99,7 +99,7 @@ koko-ui:
 .PHONY: docker
 docker:
 	@echo "build docker images"
-	docker build --build-arg TARGETARCH=amd64 -t jumpserver/koko .
+	docker build --build-arg TARGETARCH=$(ARCH) -t jumpserver/koko .
 
 .PHONY: clean
 clean:
