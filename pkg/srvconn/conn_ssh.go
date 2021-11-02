@@ -62,6 +62,7 @@ func NewSSHConnection(sess *gossh.Session, opts ...SSHOption) (*SSHConnection, e
 		err = LoginToSu(conn)
 	}
 	if err != nil {
+		_ = sess.Close()
 		return nil, err
 	}
 	return conn, nil

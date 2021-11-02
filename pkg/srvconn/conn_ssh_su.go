@@ -11,28 +11,35 @@ import (
 )
 
 func LoginToSu(sc *SSHConnection) error {
+	successPattern := fmt.Sprintf("%s@", sc.options.sudoUsername)
 	steps := make([]stepItem, 0, 2)
 	steps = append(steps,
 		stepItem{
-			Input:         sc.options.sudoCommand,
-			ExpectPattern: passwordMatchPattern,
-			IsCommand:     true,
+			Input:           sc.options.sudoCommand,
+			ExpectPattern:   passwordMatchPattern,
+			FinishedPattern: successPattern,
+			IsCommand:       true,
 		},
 		stepItem{
-			Input:         sc.options.sudoPassword,
-			ExpectPattern: fmt.Sprintf("%s@", sc.options.sudoUsername),
+			Input:           sc.options.sudoPassword,
+			ExpectPattern:   successPattern,
+			FinishedPattern: successPattern,
 		},
 	)
 	for i := 0; i < len(steps); i++ {
-		if err := executeStep(&steps[i], sc); err != nil {
+		finished, err := executeStep(&steps[i], sc)
+		if err != nil {
 			return err
+		}
+		if finished {
+			break
 		}
 	}
 	_, _ = sc.Write([]byte("\r\n"))
 	return nil
 }
 
-func executeStep(step *stepItem, sc *SSHConnection) error {
+func executeStep(step *stepItem, sc *SSHConnection) (bool, error) {
 	return step.Execute(sc)
 }
 
@@ -45,15 +52,19 @@ const (
 var ErrorTimeout = errors.New("time out")
 
 type stepItem struct {
-	Input         string
-	ExpectPattern string
-	IsCommand     bool
+	Input          string
+	ExpectPattern  string
+	IsCommand       bool
+	FinishedPattern string
 }
 
-func (s *stepItem) Execute(sc *SSHConnection) error {
-	success := make(chan struct{}, 1)
-	errorChan := make(chan error, 1)
+func (s *stepItem) Execute(sc *SSHConnection) (bool, error) {
+	resultChan := make(chan *ExecuteResult, 1)
 	matchReg, err := regexp.Compile(s.ExpectPattern)
+	if err != nil {
+		logger.Error(err)
+	}
+	successReg, err := regexp.Compile(s.FinishedPattern)
 	if err != nil {
 		logger.Error(err)
 	}
@@ -64,17 +75,21 @@ func (s *stepItem) Execute(sc *SSHConnection) error {
 	}
 	go func() {
 		buf := make([]byte, 8192)
-		var revStr strings.Builder
+		var recStr strings.Builder
 		for {
-			nr, err := sc.Read(buf)
-			if err != nil {
-				errorChan <- err
+			nr, err2 := sc.Read(buf)
+			if err2 != nil {
+				resultChan <- &ExecuteResult{Err: err2}
 				return
 			}
-			revStr.Write(buf[:nr])
-			result := revStr.String()
+			recStr.Write(buf[:nr])
+			result := recStr.String()
 			if matchReg != nil && matchReg.MatchString(result) {
-				success <- struct{}{}
+				resultChan <- &ExecuteResult{}
+				return
+			}
+			if successReg != nil && successReg.MatchString(result) {
+				resultChan <- &ExecuteResult{Finished: true}
 				return
 			}
 		}
@@ -82,12 +97,14 @@ func (s *stepItem) Execute(sc *SSHConnection) error {
 	ticker := time.NewTicker(time.Second * 30)
 	defer ticker.Stop()
 	select {
-	case <-success:
-	case err := <-errorChan:
-		return err
-
+	case ret := <-resultChan:
+		return ret.Finished, ret.Err
 	case <-ticker.C:
-		return ErrorTimeout
 	}
-	return nil
+	return false, ErrorTimeout
+}
+
+type ExecuteResult struct {
+	Finished bool
+	Err      error
 }
