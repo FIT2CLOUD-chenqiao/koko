@@ -1,5 +1,9 @@
 <template>
-  <Terminal v-bind:connectURL="wsURL"></Terminal>
+  <el-container>
+    <el-main>
+      <Terminal v-bind:connectURL="wsURL"></Terminal>
+    </el-main>
+  </el-container>
 </template>
 
 <script>
